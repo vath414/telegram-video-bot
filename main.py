@@ -3,7 +3,6 @@ import subprocess
 import requests
 import glob
 import sys
-import time
 
 # Get secrets from GitHub
 TOKEN = os.environ.get("TELEGRAM_BOT_TOKEN")
@@ -18,20 +17,19 @@ VIDEO_URL = "https://kingbokeptv.com/video/cane-tiktok-join-tele-lupabelum-17mp4
 def download_video(url):
     print(f"Starting download for: {url}")
     
-    # Build yt-dlp command
+    # Base command with chrome impersonation to bypass Cloudflare
     cmd = [
         "python3", "-m", "yt_dlp",
         "--no-check-certificate",
-        "--user-agent", "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/122.0.0.0 Safari/537.36",
-        "--extractor-args", "generic:impersonate",
+        "--extractor-args", "generic:impersonate=chrome",
     ]
     
-    # Only use cookies if the file exists
-    if os.path.exists("cookies.txt"):
+    # Only use cookies if the file exists and is not empty
+    if os.path.exists("cookies.txt") and os.path.getsize("cookies.txt") > 0:
         print("Using cookies.txt for authentication.")
         cmd.extend(["--cookies", "cookies.txt"])
     else:
-        print("Warning: cookies.txt not found. Attempting download without cookies.")
+        print("No valid cookies.txt found. Proceeding without cookies.")
     
     cmd.append(url)
     
