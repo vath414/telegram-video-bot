@@ -12,11 +12,13 @@ URL_FILE = "urls.txt"
 print("Starting download...")
 
 # Download using yt-dlp with cookies and batch file
+VIDEO_URL = "https://kingbokep.wiki/indonesia/ketika-hanya-ada-kita-berdua-dirumah-majikan-lagi-liburan/"
+
 subprocess.run([
     "yt-dlp",
     "-o", OUTPUT_TEMPLATE,
     "--cookies", "cookies.txt",
-    "-a", URL_FILE
+    VIDEO_URL
 ], check=True)
 
 print("Download finished.")
