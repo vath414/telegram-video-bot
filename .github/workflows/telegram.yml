@@ -13,9 +13,8 @@ jobs:
 
       - name: Install dependencies
         run: |
-          sudo apt update
-          sudo apt install -y yt-dlp
-          pip install requests
+          python -m pip install --upgrade pip
+          pip install yt-dlp requests
 
       - name: Run script
         env:
