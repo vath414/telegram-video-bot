@@ -12,7 +12,7 @@ if not TOKEN or not CHAT_ID:
     print("Missing TELEGRAM_BOT_TOKEN or TELEGRAM_CHAT_ID")
     sys.exit(1)
 
-VIDEO_URL = "https://kingbokep.wiki/indonesia/bokep-indo-geli-kali-nikmatnya-dibuat-olehnya-bikin-ketagihan/"
+VIDEO_URL = "https://kingbokeptv.com/video/cane-tiktok-join-tele-lupabelum-17mp4"
 
 print("Starting download...")
 
