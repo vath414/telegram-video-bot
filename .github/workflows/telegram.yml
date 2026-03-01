@@ -25,7 +25,9 @@ jobs:
         run: |
           python -m pip install --upgrade pip
           pip install "yt-dlp[default,curl-cffi]" requests curl-cffi
-          yt-dlp --version
+          sudo apt update
+          sudo apt install -y ffmpeg
+          ffmpeg -version
 
       - name: Run script
         env:
