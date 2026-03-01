@@ -2,21 +2,23 @@ import os
 import subprocess
 import requests
 import glob
+import sys
 
+# Get secrets from GitHub
 TOKEN = os.environ.get("TELEGRAM_BOT_TOKEN")
 CHAT_ID = os.environ.get("TELEGRAM_CHAT_ID")
 
-OUTPUT_TEMPLATE = "%(title)s.%(ext)s"
-URL_FILE = "urls.txt"
+if not TOKEN or not CHAT_ID:
+    print("Missing TELEGRAM_BOT_TOKEN or TELEGRAM_CHAT_ID")
+    sys.exit(1)
+
+VIDEO_URL = "https://kingbokep.wiki/indonesia/bokep-indo-geli-kali-nikmatnya-dibuat-olehnya-bikin-ketagihan/"
 
 print("Starting download...")
 
-# Download using yt-dlp with cookies and batch file
-VIDEO_URL = "https://kingbokep.wiki/indonesia/ketika-hanya-ada-kita-berdua-dirumah-majikan-lagi-liburan/"
-
+# Download video (no -o option)
 subprocess.run([
     "yt-dlp",
-    "-o", OUTPUT_TEMPLATE,
     "--cookies", "cookies.txt",
     VIDEO_URL
 ], check=True)
@@ -24,16 +26,19 @@ subprocess.run([
 print("Download finished.")
 print("Scanning downloaded files...")
 
-# Find all files in directory
-files = glob.glob("*")
+# Only look for real video files
+video_files = (
+    glob.glob("*.mp4") +
+    glob.glob("*.mkv") +
+    glob.glob("*.webm") +
+    glob.glob("*.mov")
+)
 
-for file in files:
-    if file in ["main.py", "urls.txt", "cookies.txt"]:
-        continue
+if not video_files:
+    print("No video files found.")
+    sys.exit(1)
 
-    if os.path.isdir(file):
-        continue
-
+for file in video_files:
     size_bytes = os.path.getsize(file)
     size_gb = size_bytes / (1024**3)
 
@@ -53,6 +58,10 @@ for file in files:
         )
 
     print("Telegram response:", response.text)
+
+    if response.status_code != 200:
+        print("Upload failed.")
+        sys.exit(1)
 
     os.remove(file)
     print("Deleted local file.")
