@@ -1,11 +1,10 @@
 # Netscape HTTP Cookie File
-# https://curl.haxx.se/rfc/cookie_spec.html
-# This is a generated file! Do not edit.
+# http://curl.haxx.se/rfc/cookie_spec.html
+# This is a generated file!  Do not edit.
 
-.kingbokep.wiki	FALSE	/	FALSE	1806679507	_ga	GA1.1.187867088.1772119501
-.kingbokep.wiki	FALSE	/	FALSE	1806589507	UGVyc2lzdFN0b3JhZ2U	%7B%7D
-.kingbokep.wiki	FALSE	/	FALSE	1772123041	__PPU_tuid	7611195301429902106
-.kingbokep.wiki	FALSE	/	FALSE	1806589507	__PPU_puid	16834567338299353878
-.kingbokep.wiki	FALSE	/	FALSE	0	__PPU_ppucnt	1
-.kingbokep.wiki	FALSE	/	FALSE	1806679507	_ga_MBQZRMC1Q2	GS2.1.s1772119500$o1$g1$t1772119507$j53$l0$h0
-.kingbokep.wiki	FALSE	/	FALSE	0	__PPU_cl_tl	zQIAgqFs0mmgZdOhYwU
+.kingbokep.wiki	TRUE	/	FALSE	1806912661	_ga	GA1.1.187867088.1772119501
+.kingbokep.wiki	TRUE	/	FALSE	1806822703	UGVyc2lzdFN0b3JhZ2U	%7B%7D
+.kingbokep.wiki	TRUE	/	FALSE	1806822703	__PPU_puid	16834567338299353878
+.kingbokep.wiki	TRUE	/	FALSE	1806912661	_ga_MBQZRMC1Q2	GS2.1.s1772352169$o2$g1$t1772352661$j60$l0$h0
+.kingbokep.wiki	TRUE	/	FALSE	0	__PPU_cl_tl	zQIAgqFs0mmj9JehYwsBgqFs0mmj8sOhYwM
+.kingbokep.wiki	TRUE	/	FALSE	0	__PPU_ppucnt	3
