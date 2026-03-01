@@ -1,5 +1,4 @@
 import os
-import subprocess
 import requests
 import glob
 import sys
@@ -26,59 +25,37 @@ def get_direct_video_url(page_url):
             return None
         
         # Look for the stream URL pattern
-        # Based on investigation, it looks like /videos/ID/stream
         match = re.search(r"https?://kingbokeptv\.com/videos/\d+/stream", r.text)
         if match:
             direct_url = match.group(0)
             print(f"Found direct video URL: {direct_url}")
             return direct_url
         
-        # Fallback: look for any .mp4 link
-        mp4_matches = re.findall(r"https?://[^\s\"']+\.mp4", r.text)
-        if mp4_matches:
-            # Filter out common false positives
-            for url in mp4_matches:
-                if "kingbokeptv.com" in url and "/video/" not in url:
-                    print(f"Found potential mp4 URL: {url}")
-                    return url
-                    
         print("Could not find direct video URL in page source.")
         return None
     except Exception as e:
         print(f"Error during URL extraction: {e}")
         return None
 
-def download_video(url):
-    # Try to get the direct stream URL first
-    direct_url = get_direct_video_url(url)
-    
-    # If we found a direct URL, use it. Otherwise, try the original URL with yt-dlp
-    target_url = direct_url if direct_url else url
-    print(f"Starting download for: {target_url}")
-    
-    # Build yt-dlp command
-    cmd = [
-        "python3", "-m", "yt_dlp",
-        "--no-check-certificate",
-        "--user-agent", "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/122.0.0.0 Safari/537.36",
-        "--extractor-args", "generic:impersonate=chrome",
-    ]
-    
-    # Only use cookies if the file exists and is not empty
-    if os.path.exists("cookies.txt") and os.path.getsize("cookies.txt") > 0:
-        print("Using cookies.txt for authentication.")
-        cmd.extend(["--cookies", "cookies.txt"])
-    
-    cmd.append(target_url)
-    
+def download_file_with_curl_cffi(url, filename):
+    print(f"Downloading video using curl-cffi: {url}")
     try:
-        subprocess.run(cmd, check=True)
-        print("Download finished successfully.")
-    except subprocess.CalledProcessError as e:
-        print(f"Error: yt-dlp failed with exit code {e.returncode}")
-        if not direct_url:
-            print("Since no direct URL was found, this failure is expected due to Cloudflare.")
-        sys.exit(1)
+        # Use curl-cffi to download the file in chunks
+        with curl_requests.get(url, impersonate="chrome", stream=True, timeout=600) as r:
+            if r.status_code != 200:
+                print(f"Failed to download video: HTTP {r.status_code}")
+                return False
+            
+            with open(filename, 'wb') as f:
+                for chunk in r.iter_content(chunk_size=8192):
+                    if chunk:
+                        f.write(chunk)
+        
+        print(f"Download finished: {filename}")
+        return True
+    except Exception as e:
+        print(f"Error during download: {e}")
+        return False
 
 def upload_to_telegram(file_path):
     size_bytes = os.path.getsize(file_path)
@@ -119,28 +96,24 @@ def upload_to_telegram(file_path):
         return False
 
 def main():
-    download_video(VIDEO_URL)
-    
-    print("Scanning for downloaded video files...")
-    video_extensions = ["*.mp4", "*.mkv", "*.webm", "*.mov", "*.avi"]
-    video_files = []
-    for ext in video_extensions:
-        video_files.extend(glob.glob(ext))
-    
-    if not video_files:
-        print("No video files found in the current directory.")
+    direct_url = get_direct_video_url(VIDEO_URL)
+    if not direct_url:
+        print("Failed to find direct video URL. Exiting.")
         sys.exit(1)
     
-    success_count = 0
-    for file in video_files:
-        if upload_to_telegram(file):
-            os.remove(file)
-            print(f"Deleted local file: {file}")
-            success_count += 1
+    filename = "video.mp4"
+    if download_file_with_curl_cffi(direct_url, filename):
+        if upload_to_telegram(filename):
+            os.remove(filename)
+            print(f"Deleted local file: {filename}")
         else:
-            print(f"Failed to process: {file}")
+            print(f"Failed to upload: {filename}")
+            sys.exit(1)
+    else:
+        print("Failed to download video.")
+        sys.exit(1)
             
-    print(f"Task completed. Successfully processed {success_count} out of {len(video_files)} files.")
+    print("Task completed successfully.")
 
 if __name__ == "__main__":
     main()
