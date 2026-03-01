@@ -41,17 +41,24 @@ def download_file_with_curl_cffi(url, filename):
     print(f"Downloading video using curl-cffi: {url}")
     try:
         # Use curl-cffi to download the file in chunks
-        with curl_requests.get(url, impersonate="chrome", stream=True, timeout=600) as r:
-            if r.status_code != 200:
-                print(f"Failed to download video: HTTP {r.status_code}")
-                return False
-            
-            with open(filename, 'wb') as f:
-                for chunk in r.iter_content(chunk_size=8192):
-                    if chunk:
-                        f.write(chunk)
+        # Note: curl-cffi's Response object is not a context manager
+        r = curl_requests.get(url, impersonate="chrome", stream=True, timeout=600)
         
-        print(f"Download finished: {filename}")
+        if r.status_code != 200:
+            print(f"Failed to download video: HTTP {r.status_code}")
+            return False
+        
+        total_downloaded = 0
+        with open(filename, 'wb') as f:
+            for chunk in r.iter_content(chunk_size=65536): # 64KB chunks
+                if chunk:
+                    f.write(chunk)
+                    total_downloaded += len(chunk)
+                    # Log progress every 5MB
+                    if total_downloaded % (5 * 1024 * 1024) < 65536:
+                        print(f"Downloaded: {total_downloaded / (1024 * 1024):.2f} MB")
+        
+        print(f"Download finished: {filename} (Total: {total_downloaded / (1024 * 1024):.2f} MB)")
         return True
     except Exception as e:
         print(f"Error during download: {e}")
