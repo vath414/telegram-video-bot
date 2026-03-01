@@ -9,15 +9,20 @@ jobs:
     timeout-minutes: 360
 
     steps:
-      - uses: actions/checkout@v4
+      - name: Checkout code
+        uses: actions/checkout@v4
 
-      - name: Install yt-dlp with impersonation
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      - name: Install dependencies
         run: |
           python -m pip install --upgrade pip
           pip install "yt-dlp[default,curl-cffi]" requests
-          python -m yt_dlp --version
-      - name: Check yt-dlp version
-        run: yt-dlp --version
+          yt-dlp --version
+
       - name: Run script
         env:
           TELEGRAM_BOT_TOKEN: ${{ secrets.TELEGRAM_BOT_TOKEN }}
