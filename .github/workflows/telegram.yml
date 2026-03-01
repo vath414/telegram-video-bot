@@ -1,7 +1,9 @@
-name: Batch Download and Send
+name: Telgram-Video-Bot
 
 on:
-  workflow_dispatch:
+  schedule:
+    - cron: "0 */2 * * *" # Runs every 2 hours (12 times a day)
+  workflow_dispatch: # Allows manual triggering
 
 jobs:
   send:
@@ -11,6 +13,8 @@ jobs:
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
+        with:
+          fetch-depth: 0 # Fetch all history for git push
 
       - name: Set up Python
         uses: actions/setup-python@v5
@@ -28,3 +32,11 @@ jobs:
           TELEGRAM_BOT_TOKEN: ${{ secrets.TELEGRAM_BOT_TOKEN }}
           TELEGRAM_CHAT_ID: ${{ secrets.TELEGRAM_CHAT_ID }}
         run: python main.py
+
+      - name: Commit and push history
+        run: |
+          git config --local user.email "github-actions[bot]@users.noreply.github.com"
+          git config --local user.name "github-actions[bot]"
+          git add history.json || true
+          git commit -m "Update download history [skip ci]" || true
+          git push || true
