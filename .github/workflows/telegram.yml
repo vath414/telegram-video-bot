@@ -20,7 +20,7 @@ jobs:
       - name: Install dependencies
         run: |
           python -m pip install --upgrade pip
-          pip install "yt-dlp[default,curl-cffi]" requests
+          pip install "yt-dlp[default,curl-cffi]" requests curl-cffi
           yt-dlp --version
 
       - name: Run script

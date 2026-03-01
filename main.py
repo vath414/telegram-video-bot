@@ -3,6 +3,8 @@ import subprocess
 import requests
 import glob
 import sys
+import re
+from curl_cffi import requests as curl_requests
 
 # Get secrets from GitHub
 TOKEN = os.environ.get("TELEGRAM_BOT_TOKEN")
@@ -14,13 +16,51 @@ if not TOKEN or not CHAT_ID:
 
 VIDEO_URL = "https://kingbokeptv.com/video/cane-tiktok-join-tele-lupabelum-17mp4"
 
+def get_direct_video_url(page_url):
+    print(f"Fetching page to find direct video URL: {page_url}")
+    try:
+        # Use curl-cffi to bypass Cloudflare
+        r = curl_requests.get(page_url, impersonate="chrome", timeout=30)
+        if r.status_code != 200:
+            print(f"Failed to fetch page: HTTP {r.status_code}")
+            return None
+        
+        # Look for the stream URL pattern
+        # Based on investigation, it looks like /videos/ID/stream
+        match = re.search(r"https?://kingbokeptv\.com/videos/\d+/stream", r.text)
+        if match:
+            direct_url = match.group(0)
+            print(f"Found direct video URL: {direct_url}")
+            return direct_url
+        
+        # Fallback: look for any .mp4 link
+        mp4_matches = re.findall(r"https?://[^\s\"']+\.mp4", r.text)
+        if mp4_matches:
+            # Filter out common false positives
+            for url in mp4_matches:
+                if "kingbokeptv.com" in url and "/video/" not in url:
+                    print(f"Found potential mp4 URL: {url}")
+                    return url
+                    
+        print("Could not find direct video URL in page source.")
+        return None
+    except Exception as e:
+        print(f"Error during URL extraction: {e}")
+        return None
+
 def download_video(url):
-    print(f"Starting download for: {url}")
+    # Try to get the direct stream URL first
+    direct_url = get_direct_video_url(url)
     
-    # Base command with chrome impersonation to bypass Cloudflare
+    # If we found a direct URL, use it. Otherwise, try the original URL with yt-dlp
+    target_url = direct_url if direct_url else url
+    print(f"Starting download for: {target_url}")
+    
+    # Build yt-dlp command
     cmd = [
         "python3", "-m", "yt_dlp",
         "--no-check-certificate",
+        "--user-agent", "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/122.0.0.0 Safari/537.36",
         "--extractor-args", "generic:impersonate=chrome",
     ]
     
@@ -28,25 +68,17 @@ def download_video(url):
     if os.path.exists("cookies.txt") and os.path.getsize("cookies.txt") > 0:
         print("Using cookies.txt for authentication.")
         cmd.extend(["--cookies", "cookies.txt"])
-    else:
-        print("No valid cookies.txt found. Proceeding without cookies.")
     
-    cmd.append(url)
+    cmd.append(target_url)
     
     try:
         subprocess.run(cmd, check=True)
         print("Download finished successfully.")
     except subprocess.CalledProcessError as e:
         print(f"Error: yt-dlp failed with exit code {e.returncode}")
-        # Try a fallback without impersonation if it failed
-        print("Attempting fallback download without impersonation...")
-        fallback_cmd = ["python3", "-m", "yt_dlp", "--no-check-certificate", url]
-        try:
-            subprocess.run(fallback_cmd, check=True)
-            print("Fallback download finished successfully.")
-        except subprocess.CalledProcessError:
-            print("Error: Fallback download also failed.")
-            sys.exit(1)
+        if not direct_url:
+            print("Since no direct URL was found, this failure is expected due to Cloudflare.")
+        sys.exit(1)
 
 def upload_to_telegram(file_path):
     size_bytes = os.path.getsize(file_path)
@@ -60,19 +92,16 @@ def upload_to_telegram(file_path):
 
     print(f"Uploading {file_path} to Telegram...")
     
-    # Use sendVideo for better playback, fallback to sendDocument if needed
     url = f"https://api.telegram.org/bot{TOKEN}/sendVideo"
     
     try:
         with open(file_path, "rb") as f:
             files = {"video": f}
             data = {"chat_id": CHAT_ID, "caption": f"Downloaded: {os.path.basename(file_path)}"}
-            response = requests.post(url, data=data, files=files, timeout=600) # 10 min timeout
+            response = requests.post(url, data=data, files=files, timeout=600)
             
         if response.status_code != 200:
             print(f"Upload failed with status {response.status_code}: {response.text}")
-            # Fallback to sendDocument
-            print("Attempting fallback to sendDocument...")
             url_doc = f"https://api.telegram.org/bot{TOKEN}/sendDocument"
             with open(file_path, "rb") as f:
                 files_doc = {"document": f}
