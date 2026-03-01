@@ -18,11 +18,11 @@ print("Starting download...")
 
 # Download video (no -o option)
 subprocess.run([
-    "yt-dlp",
+    "python", "-m", "yt_dlp",
     "--cookies", "cookies.txt",
+    "--extractor-args", "generic:impersonate",
     VIDEO_URL
 ], check=True)
-
 print("Download finished.")
 print("Scanning downloaded files...")
 
