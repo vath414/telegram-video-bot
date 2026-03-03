@@ -1,6 +1,5 @@
 import os
 import requests
-import glob
 import sys
 import re
 import json
@@ -17,7 +16,7 @@ CHAT_ID = os.environ.get("TELEGRAM_CHAT_ID")
 
 HISTORY_FILE = "history.json"
 DAILY_LIMIT = 10
-MAX_TELEGRAM_MB = 48   # safe limit under 50MB
+MAX_TELEGRAM_MB = 48  # safe under 50MB
 
 if not TOKEN or not CHAT_ID:
     print("Error: Missing TELEGRAM_BOT_TOKEN or TELEGRAM_CHAT_ID")
@@ -60,6 +59,7 @@ def save_history(history):
 
 def get_video_links():
     print("Fetching homepage...")
+
     r = curl_requests.get(
         "https://kingbokeptv.com",
         impersonate="chrome",
@@ -101,59 +101,37 @@ def get_direct_video_url(page_url):
 
 
 # ==============================
-# DOWNLOAD
+# DOWNLOAD + ENCODE (FIXED)
 # ==============================
 
-def download_file(url, filename):
-    print("Downloading video...")
-
-    r = curl_requests.get(
-        url,
-        impersonate="chrome",
-        stream=True,
-        timeout=600
-    )
-
-    if r.status_code != 200:
-        print("Download failed")
-        return False
-
-    total = 0
-    with open(filename, "wb") as f:
-        for chunk in r.iter_content(chunk_size=65536):
-            if chunk:
-                f.write(chunk)
-                total += len(chunk)
-
-    print(f"Downloaded: {total / (1024*1024):.2f} MB")
-    return True
-
-
-# ==============================
-# COMPRESSION
-# ==============================
-
-def compress_video(input_file, output_file):
-    print("Compressing video with ffmpeg...")
+def download_and_encode(stream_url, output_file):
+    print("Downloading and encoding with ffmpeg...")
 
     try:
         subprocess.run([
             "ffmpeg",
             "-y",
-            "-i", input_file,
-            "-vcodec", "libx264",
+            "-i", stream_url,
+            "-c:v", "libx264",
             "-preset", "veryfast",
             "-crf", "28",
+            "-c:a", "aac",
             "-movflags", "+faststart",
+            "-pix_fmt", "yuv420p",
             output_file
         ], check=True)
 
-        size = os.path.getsize(output_file) / (1024*1024)
-        print(f"Compressed size: {size:.2f} MB")
+        size_mb = os.path.getsize(output_file) / (1024 * 1024)
+        print(f"Final size: {size_mb:.2f} MB")
+
+        if size_mb > MAX_TELEGRAM_MB:
+            print("File too large for Telegram.")
+            return False
+
         return True
 
     except Exception as e:
-        print(f"Compression failed: {e}")
+        print("FFmpeg failed:", e)
         return False
 
 
@@ -162,12 +140,6 @@ def compress_video(input_file, output_file):
 # ==============================
 
 def upload_to_telegram(file_path):
-    size_mb = os.path.getsize(file_path) / (1024 * 1024)
-
-    if size_mb > MAX_TELEGRAM_MB:
-        print(f"File still too large after compression ({size_mb:.2f} MB). Skipping.")
-        return False
-
     print("Uploading to Telegram...")
 
     url = f"https://api.telegram.org/bot{TOKEN}/sendVideo"
@@ -196,6 +168,7 @@ def main():
     history = load_history()
     today = datetime.now().strftime("%Y-%m-%d")
 
+    # Reset daily counter if new day
     if history["last_reset"] != today:
         print("New day detected. Resetting counter.")
         history["last_reset"] = today
@@ -219,25 +192,20 @@ def main():
 
     stream_url = get_direct_video_url(page_url)
     if not stream_url:
+        save_history(history)
         return
 
-    original = "temp_video.mp4"
-    compressed = "compressed.mp4"
+    output_file = "final_video.mp4"
 
-    if download_file(stream_url, original):
+    if download_and_encode(stream_url, output_file):
 
-        if compress_video(original, compressed):
+        if upload_to_telegram(output_file):
+            history["sent_urls"].append(page_url)
+            history["daily_count"] += 1
 
-            if upload_to_telegram(compressed):
-                history["sent_urls"].append(page_url)
-                history["daily_count"] += 1
-
-        # Cleanup
-        if os.path.exists(original):
-            os.remove(original)
-
-        if os.path.exists(compressed):
-            os.remove(compressed)
+    # Cleanup
+    if os.path.exists(output_file):
+        os.remove(output_file)
 
     save_history(history)
 
